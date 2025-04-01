@@ -3,7 +3,7 @@ jobs:
   build:
     # Variable expansion in working_directory not supported at this time
     # You will need to modify the code below to reflect your github account/repo setup
-    working_directory: /go/src/github.com/Securing-DevOps/invoicer-chapter3
+    working_directory: /go/src/github.com/moiz-usid/invoicer-chapter3
     docker:
       - image: circleci/golang:1.8
     environment:
@@ -31,10 +31,10 @@ jobs:
             docker build -t ${DOCKER_REPO}/${CIRCLE_PROJECT_REPONAME} .;
 
       - run:
-          name: Run application in background
+          name: Run application locally
           command: |
-            docker run ${DOCKER_REPO}/${CIRCLE_PROJECT_REPONAME}
-          background: true
+            ./deploy-locally.sh
+
 
       - run:
           name: ZAP baseline test of application
@@ -54,16 +54,6 @@ jobs:
           command: 'GOPATH="${GOPATH_HEAD}"; ( cd ${GOPATH_BASE}/${CIRCLE_PROJECT_REPONAME} && govend -u --prune && git diff --quiet )'
 
       - deploy:
-          # Push application container to dockerhub
-          command: |
-            if [ "${CIRCLE_BRANCH}" == "master" ]; then
-                docker login -u ${DOCKER_USER} -p ${DOCKER_PASS};
-                echo ${DOCKER_USER}/${CIRCLE_PROJECT_REPONAME}:${CIRCLE_TAG};
-                go install --ldflags '-extldflags "-static"' github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME};
-                mkdir bin;
-                cp "$GOPATH_HEAD/bin/${CIRCLE_PROJECT_REPONAME}" bin/invoicer;
-                docker build -t ${DOCKER_REPO}/${CIRCLE_PROJECT_REPONAME} .;
-                docker images --no-trunc | awk '/^app/ {print $3}' | sudo tee $CIRCLE_ARTIFACTS/docker-image-shasum256.txt;
-                docker push ${DOCKER_REPO}/${CIRCLE_PROJECT_REPONAME};
-            fi
+          name: Deploy Locally
+          command: ./deploy-locally.sh
             
